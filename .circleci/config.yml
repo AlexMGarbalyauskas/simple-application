@@ -159,7 +159,7 @@ jobs:
             fi
 
             echo "Checking $APP_HTTPS_URL"
-            headers=$(curl -sSIk --max-time 30 "$APP_HTTPS_URL" 2>&1) || {
+            headers=$(curl -sSIk --max-time 60 --retry 5 --retry-delay 10 --retry-connrefused "$APP_HTTPS_URL" 2>&1) || {
               echo "WARNING: Could not connect to $APP_HTTPS_URL (HTTPS may not be configured on this environment)"
               echo "Skipping HTTPS/HSTS check - configure SSL to enable HTTPS"
               exit 0

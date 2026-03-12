@@ -19,8 +19,8 @@ RUN mkdir -p /etc/ssl/private /run/nginx && \
 
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Write start script inline to avoid Windows CRLF line ending issues
-RUN printf '#!/bin/sh\nset -e\ncd /app && node ./bin/www &\nfor i in $(seq 1 15); do nc -z 127.0.0.1 3000 && break; sleep 1; done\nexec nginx -g "daemon off;"\n' > /start.sh && chmod +x /start.sh
+# Simple start script: start node, wait 5s, then start nginx
+RUN printf '#!/bin/sh\nnode /app/bin/www &\necho "Node started, waiting 5s..."\nsleep 5\necho "Starting nginx..."\nnginx -g "daemon off;"\n' > /start.sh && chmod +x /start.sh
 
 EXPOSE 80 443
 
