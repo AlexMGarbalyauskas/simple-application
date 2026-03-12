@@ -105,6 +105,10 @@ jobs:
               --environment-name "$EB_ENV_NAME" \
               --version-label "$CIRCLE_SHA1" \
               --region "$AWS_REGION"
+      - run:
+          name: Show deployed application link
+          command: |
+            echo "Application URL: http://simpleapp-env.eba-bxv6jbpd.eu-north-1.elasticbeanstalk.com/"
 
   verify-https:
     docker:
