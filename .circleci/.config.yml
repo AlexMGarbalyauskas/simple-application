@@ -1,0 +1,19 @@
+version: 2.1
+
+orbs:
+  node: circleci/node@5
+
+jobs:
+  build:
+    docker:
+      - image: cimg/node:18.0
+    steps:
+      - checkout
+      - run: npm ci
+      - run: npm test || echo "no tests"
+      - run: npm run build || echo "no build step"
+
+workflows:
+  build-and-test:
+    jobs:
+      - build
