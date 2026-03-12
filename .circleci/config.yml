@@ -146,6 +146,19 @@ jobs:
             else
               echo "WARNING: Missing Strict-Transport-Security header"
             fi
+      - run:
+          name: Application live URL
+          command: |
+            cname=$(aws elasticbeanstalk describe-environments \
+              --environment-names "$EB_ENV_NAME" \
+              --region "$AWS_REGION" \
+              --query 'Environments[0].CNAME' \
+              --output text)
+            echo "============================================"
+            echo "  Application is live!"
+            echo "  HTTP:  http://$cname"
+            echo "  HTTPS: https://$cname"
+            echo "============================================"
 
 workflows:
   build-test-security-docker-deploy:
