@@ -18,8 +18,9 @@ RUN mkdir -p /etc/ssl/private /run/nginx && \
       -subj "/C=IE/ST=Dublin/L=Dublin/O=College/CN=simplapplication-ca.duckdns.org"
 
 COPY nginx.conf /etc/nginx/nginx.conf
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
+
+# Write start script inline to avoid Windows CRLF line ending issues
+RUN printf '#!/bin/sh\nset -e\ncd /app && node ./bin/www &\nfor i in $(seq 1 15); do nc -z 127.0.0.1 3000 && break; sleep 1; done\nexec nginx -g "daemon off;"\n' > /start.sh && chmod +x /start.sh
 
 EXPOSE 80 443
 
