@@ -106,6 +106,31 @@ jobs:
               --version-label "$CIRCLE_SHA1" \
               --region "$AWS_REGION"
       - run:
+          name: Wait for Elastic Beanstalk deployment to complete
+          no_output_timeout: 10m
+          command: |
+            echo "Waiting for EB environment to become Ready..."
+            for i in $(seq 1 40); do
+              STATUS=$(aws elasticbeanstalk describe-environments \
+                --environment-names "$EB_ENV_NAME" \
+                --region "$AWS_REGION" \
+                --query 'Environments[0].Status' \
+                --output text)
+              HEALTH=$(aws elasticbeanstalk describe-environments \
+                --environment-names "$EB_ENV_NAME" \
+                --region "$AWS_REGION" \
+                --query 'Environments[0].HealthStatus' \
+                --output text)
+              echo "Attempt $i: Status=$STATUS Health=$HEALTH"
+              if [ "$STATUS" = "Ready" ]; then
+                echo "Environment is Ready!"
+                exit 0
+              fi
+              sleep 15
+            done
+            echo "Timed out waiting for environment to be Ready"
+            exit 1
+      - run:
           name: Show deployed application link
           command: |
             echo "Application URL: http://simpleapp-env.eba-bxv6jbpd.eu-north-1.elasticbeanstalk.com/"
