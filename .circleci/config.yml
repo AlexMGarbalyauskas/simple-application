@@ -112,14 +112,25 @@ jobs:
 
   verify-https:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/aws:2023.06
     steps:
       - run:
           name: Verify HTTPS endpoint and HSTS header
           command: |
             if [ -z "$APP_HTTPS_URL" ]; then
-              echo "APP_HTTPS_URL is not set; skipping HTTPS verification"
-              exit 0
+              cname=$(aws elasticbeanstalk describe-environments \
+                --environment-names "$EB_ENV_NAME" \
+                --region "$AWS_REGION" \
+                --query 'Environments[0].CNAME' \
+                --output text)
+
+              if [ -z "$cname" ] || [ "$cname" = "None" ]; then
+                echo "APP_HTTPS_URL is not set and environment CNAME could not be discovered"
+                exit 1
+              fi
+
+              echo "Application URL: http://$cname"
+              APP_HTTPS_URL="https://$cname"
             fi
 
             echo "Checking $APP_HTTPS_URL"
