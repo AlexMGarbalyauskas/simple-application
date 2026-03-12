@@ -1,7 +1,7 @@
 FROM node:18-alpine
 
-# Install nginx and openssl
-RUN apk add --no-cache nginx openssl
+# Install nginx, openssl and netcat
+RUN apk add --no-cache nginx openssl netcat-openbsd
 
 WORKDIR /app
 
