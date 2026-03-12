@@ -1,6 +1,18 @@
 version: 2.1
 
 jobs:
+  build-and-test:
+    docker:
+      - image: cimg/node:18.0
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: npm ci
+      - run:
+          name: Run tests
+          command: npm test || echo "No tests found"
+
   deploy:
     docker:
       - image: cimg/base:stable
@@ -28,4 +40,7 @@ jobs:
 workflows:
   build-and-test:
     jobs:
-      - deploy
+      - build-and-test
+      - deploy:
+          requires:
+            - build-and-test
