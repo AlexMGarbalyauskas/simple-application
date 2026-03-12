@@ -106,6 +106,27 @@ jobs:
               --version-label "$CIRCLE_SHA1" \
               --region "$AWS_REGION"
 
+  verify-https:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Verify HTTPS endpoint and HSTS header
+          command: |
+            if [ -z "$APP_HTTPS_URL" ]; then
+              echo "APP_HTTPS_URL is not set; skipping HTTPS verification"
+              exit 0
+            fi
+
+            echo "Checking $APP_HTTPS_URL"
+            headers=$(curl -sSI "$APP_HTTPS_URL")
+            echo "$headers"
+
+            echo "$headers" | grep -qi '^strict-transport-security:' || {
+              echo "Missing Strict-Transport-Security header"
+              exit 1
+            }
+
 workflows:
   build-test-security-docker-deploy:
     jobs:
@@ -122,4 +143,7 @@ workflows:
       - deploy-elastic-beanstalk:
           requires:
             - docker-build-and-push
+      - verify-https:
+          requires:
+            - deploy-elastic-beanstalk
 

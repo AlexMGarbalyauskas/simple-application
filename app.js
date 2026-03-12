@@ -8,10 +8,24 @@ var indexRouter = require('./routes/index');
 var http = require('http');
 
 var app = express();
+var forceHttps = process.env.FORCE_HTTPS === 'true';
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
+app.set('trust proxy', 1);
+
+app.use(function(req, res, next) {
+  if (forceHttps && req.get('x-forwarded-proto') !== 'https') {
+    return res.redirect(301, 'https://' + req.get('host') + req.originalUrl);
+  }
+
+  if (req.get('x-forwarded-proto') === 'https') {
+    res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+
+  next();
+});
 
 app.use(logger('dev'));
 app.use(express.json());
