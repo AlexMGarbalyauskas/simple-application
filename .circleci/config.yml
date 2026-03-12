@@ -44,3 +44,14 @@ workflows:
       - deploy:
           requires:
             - build-and-test
+
+
+security-scan:
+  docker:
+    - image: cimg/node:18.0
+  steps:
+    - checkout
+    - run:
+        name: Audit dependencies
+        command: npm audit --audit-level=high || true
+
