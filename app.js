@@ -5,6 +5,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
+var http = require('http');
 
 var app = express();
 
@@ -37,3 +38,13 @@ app.use(function(err, req, res, next) {
 });
 
 module.exports = app;
+
+if (require.main === module) {
+  var port = process.env.PORT || 3000;
+  app.set('port', port);
+
+  var server = http.createServer(app);
+  server.listen(port, function() {
+    console.log('Server running on port ' + port);
+  });
+}

@@ -1,57 +1,107 @@
 version: 2.1
 
 jobs:
-  build-and-test:
+  build:
     docker:
-      - image: cimg/node:18.0
+      - image: cimg/node:18.20
     steps:
       - checkout
       - run:
           name: Install dependencies
           command: npm ci
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  test:
+    docker:
+      - image: cimg/node:18.20
+    steps:
+      - attach_workspace:
+          at: .
       - run:
           name: Run tests
           command: npm test || echo "No tests found"
 
-  deploy:
+  security-scan:
+    docker:
+      - image: cimg/node:18.20
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Scan dependencies with npm audit
+          command: npm audit --audit-level=high || true
+
+  docker-build-and-push:
     docker:
       - image: cimg/base:stable
     steps:
       - checkout
-
+      - setup_remote_docker
       - run:
-          name: Plan a deploy
+          name: Install AWS CLI
           command: |
-            circleci run release plan \
-              --environment-name="<environment-name>" \
-              --component-name="<component-name>" \
-              --target-version="<some-version-name>"
-
+            sudo apt-get update
+            sudo apt-get install -y awscli
       - run:
-          name: Update a deploy to SUCCESS
-          command: circleci run release update --status=SUCCESS
-          when: on_success
-
+          name: Build Docker image
+          command: docker build -t simpleapp:${CIRCLE_SHA1} .
       - run:
-          name: Update planned deploy to FAILED
-          command: circleci run release update --status=FAILED
-          when: on_fail
+          name: Log in to Amazon ECR
+          command: |
+            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+      - run:
+          name: Tag and push image to ECR
+          command: |
+            docker tag simpleapp:${CIRCLE_SHA1} "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:${CIRCLE_SHA1}"
+            docker tag simpleapp:${CIRCLE_SHA1} "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest"
+            docker push "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:${CIRCLE_SHA1}"
+            docker push "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest"
+
+  deploy-elastic-beanstalk:
+    docker:
+      - image: cimg/aws:2023.06
+    steps:
+      - checkout
+      - run:
+          name: Bundle app source
+          command: |
+            zip -r app.zip . -x "node_modules/*" ".git/*"
+      - run:
+          name: Upload bundle to S3
+          command: aws s3 cp app.zip "s3://$EB_S3_BUCKET/$CIRCLE_SHA1.zip"
+      - run:
+          name: Create Elastic Beanstalk application version
+          command: |
+            aws elasticbeanstalk create-application-version \
+              --application-name "$EB_APP_NAME" \
+              --version-label "$CIRCLE_SHA1" \
+              --source-bundle S3Bucket="$EB_S3_BUCKET",S3Key="$CIRCLE_SHA1.zip" \
+              --region "$AWS_REGION"
+      - run:
+          name: Deploy version to Elastic Beanstalk environment
+          command: |
+            aws elasticbeanstalk update-environment \
+              --environment-name "$EB_ENV_NAME" \
+              --version-label "$CIRCLE_SHA1" \
+              --region "$AWS_REGION"
 
 workflows:
-  build-and-test:
+  build-test-security-docker-deploy:
     jobs:
-      - build-and-test
-      - deploy:
+      - build
+      - test:
           requires:
-            - build-and-test
-
-
-security-scan:
-  docker:
-    - image: cimg/node:18.0
-  steps:
-    - checkout
-    - run:
-        name: Audit dependencies
-        command: npm audit --audit-level=high || true
+            - build
+      - security-scan:
+          requires:
+            - test
+      - docker-build-and-push:
+          requires:
+            - security-scan
+      - deploy-elastic-beanstalk:
+          requires:
+            - docker-build-and-push
 
