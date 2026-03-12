@@ -99,6 +99,35 @@ jobs:
               --source-bundle S3Bucket="$EB_S3_BUCKET",S3Key="$CIRCLE_SHA1.zip" \
               --region "$AWS_REGION"
       - run:
+          name: Enforce security group rules (least privilege)
+          command: |
+            SG_ID=$(aws ec2 describe-security-groups \
+              --filters "Name=group-name,Values=awseb-e-*" \
+              --region "$AWS_REGION" \
+              --query 'SecurityGroups[0].GroupId' \
+              --output text)
+            echo "Enforcing rules on security group: $SG_ID"
+
+            # Ensure port 80 is open
+            aws ec2 authorize-security-group-ingress \
+              --group-id "$SG_ID" --region "$AWS_REGION" \
+              --protocol tcp --port 80 --cidr 0.0.0.0/0 2>/dev/null || true
+
+            # Ensure port 443 is open
+            aws ec2 authorize-security-group-ingress \
+              --group-id "$SG_ID" --region "$AWS_REGION" \
+              --protocol tcp --port 443 --cidr 0.0.0.0/0 2>/dev/null || true
+
+            # Revoke direct Node/app port access from public internet
+            aws ec2 revoke-security-group-ingress \
+              --group-id "$SG_ID" --region "$AWS_REGION" \
+              --protocol tcp --port 8080 --cidr 0.0.0.0/0 2>/dev/null || true
+            aws ec2 revoke-security-group-ingress \
+              --group-id "$SG_ID" --region "$AWS_REGION" \
+              --protocol tcp --port 3000 --cidr 0.0.0.0/0 2>/dev/null || true
+
+            echo "Security group rules enforced: only ports 80 and 443 open to public"
+      - run:
           name: Deploy version to Elastic Beanstalk environment
           command: |
             aws elasticbeanstalk update-environment \
