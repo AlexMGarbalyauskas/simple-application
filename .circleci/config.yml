@@ -201,39 +201,16 @@ jobs:
               echo "WARNING: Missing Strict-Transport-Security header"
             fi
       - run:
-          name: 🚀 Application Live URL
+          name: Your App Is Live — Click Here
           command: |
-            cname=$(aws elasticbeanstalk describe-environments \
-              --environment-names "$EB_ENV_NAME" \
-              --region "$AWS_REGION" \
-              --query 'Environments[0].CNAME' \
-              --output text)
-
-            APP_URL="http://$cname"
-
-            echo "============================================"
-            echo "  ✅ Deployment Successful!"
-            echo "  🌐 Live URL: $APP_URL"
-            echo "============================================"
-
-            # Write URL to BASH_ENV so it's available as an env var in subsequent steps
-            echo "export DEPLOYED_URL=$APP_URL" >> $BASH_ENV
-
-            # CircleCI: store URL as a pipeline value for display
-            mkdir -p /tmp/pipeline_values
-            echo "$APP_URL" > /tmp/pipeline_values/app_url.txt
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "  DEPLOYMENT SUCCESSFUL"
+            echo "  Live URL: $APP_HTTPS_URL"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       - store_artifacts:
-          path: /tmp/pipeline_values
+          path: /tmp/deployment
           destination: deployment-info
-      - run:
-          name: Print clickable deployment link
-          command: |
-            source $BASH_ENV
-            echo "Deployment complete!"
-            echo "Open your app: $DEPLOYED_URL"
-            # CircleCI renders URLs in step output as clickable links
-            echo "CIRCLE_BUILD_URL: $CIRCLE_BUILD_URL"
-            echo "Your app is live at: $DEPLOYED_URL"
 
 workflows:
   build-test-security-docker-deploy:
