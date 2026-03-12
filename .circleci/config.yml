@@ -41,10 +41,28 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
+          name: Validate required AWS and ECR variables
+          command: |
+            required_vars="AWS_REGION AWS_ACCOUNT_ID ECR_REPOSITORY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY"
+            for var_name in $required_vars; do
+              if [ -z "${!var_name}" ]; then
+                echo "Missing required environment variable: $var_name"
+                exit 1
+              fi
+            done
+      - run:
           name: Install AWS CLI
           command: |
             sudo apt-get update
             sudo apt-get install -y awscli
+      - run:
+          name: Verify AWS credentials
+          command: aws sts get-caller-identity --region "$AWS_REGION"
+      - run:
+          name: Ensure ECR repository exists
+          command: |
+            aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --region "$AWS_REGION" || \
+            aws ecr create-repository --repository-name "$ECR_REPOSITORY" --region "$AWS_REGION"
       - run:
           name: Build Docker image
           command: docker build -t simpleapp:${CIRCLE_SHA1} .
