@@ -211,16 +211,17 @@ jobs:
           name: Write deployment HTML
           command: |
             CNAME=$(cat /tmp/deployment/cname.txt)
-            echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Deployment</title>' > /tmp/deployment/open-app.html
-            echo '<style>body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}' >> /tmp/deployment/open-app.html
-            echo '.card{background:#1e293b;border-radius:16px;padding:40px;max-width:560px;width:100%}' >> /tmp/deployment/open-app.html
-            echo 'h2{color:#4ade80}a{color:#38bdf8}.btn{display:block;background:#0ea5e9;color:white;padding:12px;border-radius:8px;text-decoration:none;text-align:center;font-weight:600;margin-top:16px}' >> /tmp/deployment/open-app.html
-            echo '</style></head><body><div class="card"><h2>Deployment Successful</h2>' >> /tmp/deployment/open-app.html
-            echo "<p>Live URL: <a href="http://$CNAME">http://$CNAME</a></p>" >> /tmp/deployment/open-app.html
-            echo "<a class="btn" href="http://$CNAME" target="_blank">Open Application</a>" >> /tmp/deployment/open-app.html
-            echo "<p style="color:#64748b;font-size:.85em;margin-top:16px">Build: $CIRCLE_BUILD_NUM | Branch: $CIRCLE_BRANCH</p>" >> /tmp/deployment/open-app.html
-            echo '</div></body></html>' >> /tmp/deployment/open-app.html
-            echo "HTML written. File size: $(wc -c < /tmp/deployment/open-app.html) bytes"
+            OUT=/tmp/deployment/open-app.html
+            printf '%s' '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Deployment</title><style>body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.card{background:#1e293b;border-radius:16px;padding:40px;max-width:560px;width:100%}h2{color:#4ade80}a{color:#38bdf8}.btn{display:block;background:#0ea5e9;color:white;padding:12px;border-radius:8px;text-decoration:none;text-align:center;font-weight:600;margin-top:16px}</style></head><body><div class="card"><h2>Deployment Successful</h2><p>Live URL: <a href="http://' > $OUT
+            printf '%s' "$CNAME" >> $OUT
+            printf '%s' '">http://' >> $OUT
+            printf '%s' "$CNAME" >> $OUT
+            printf '%s' '</a></p><a class="btn" href="http://' >> $OUT
+            printf '%s' "$CNAME" >> $OUT
+            printf '%s' '" target="_blank">Open Application</a>' >> $OUT
+            printf '<p style="color:#888;margin-top:16px">Build: %s | Branch: %s</p>' "$CIRCLE_BUILD_NUM" "$CIRCLE_BRANCH" >> $OUT
+            printf '%s' '</div></body></html>' >> $OUT
+            echo "HTML written: $(wc -c < $OUT) bytes"
             ls -la /tmp/deployment/
       - store_artifacts:
           path: /tmp/deployment
